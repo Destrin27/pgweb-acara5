@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Flores</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <style>
+        html,
+        body {
+            margin: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // ======================= Inisialisasi Peta =======================
+        var map = L.map("map").setView([-8.3555810, 122.9935381], 10);
+
+        // ======================= Basemaps =======================
+        var osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        var Esri_WorldImagery = L.tileLayer(
+            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            { attribution: "Tiles &copy; Esri" }
+        );
+
+        var rupabumiindonesia = L.tileLayer(
+            "https://tile.geoservices.big.go.id/rbi/{z}/{x}/{y}.png",
+            { attribution: "RBI BIG" }
+        );
+
+        // ======================= Toponimi =======================
+        let toponimii = L.layerGroup();
+
+        fetch('data/toponimii.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    pointToLayer: function (feature, latlng) {
+                        return L.marker(latlng, {
+                            icon: L.icon({
+                                iconUrl: "img/pin.png",
+                                iconSize: [30, 30],
+                                iconAnchor: [16, 32],
+                                popupAnchor: [0, -32],
+                                tooltipAnchor: [10, -20],
+                            }),
+                        });
+                    },
+                    onEachFeature: function (feature, layer) {
+                        var popup_content = "Nama: " + feature.properties.TOPONIMI + "<br>" +
+                            "Koordinat: " + feature.geometry.coordinates[1] + ", " +
+                            feature.geometry.coordinates[0];
+                        layer.bindPopup(popup_content);
+                        layer.bindTooltip(feature.properties.TOPONIMI);
+                    },
+                }).addTo(toponimii);
+            });
+        toponimii.addTo(map);
+
+        // ======================= Jalan =======================
+        map.createPane('panejalan');
+        map.getPane("panejalan").style.zIndex = 401;
+
+        var jalan = L.geoJSON(null, {
+            pane: 'panejalan',
+            style: function () {
+                return { color: "red", opacity: 1, weight: 1.5 };
+            },
+            onEachFeature: function (feature, layer) {
+                layer.bindTooltip(feature.properties.NAMA_UNSUR, {
+                    direction: "auto",
+                    sticky: true,
+                });
+            },
+        });
+
+        $.getJSON("data/jalann.geojson", function (data) {
+            jalan.addData(data);
+            map.addLayer(jalan);
+        });
+
+        // ======================= Sungai =======================
+        var sungai = L.geoJSON(null, {
+            style: function () {
+                return { color: "blue", opacity: 1, weight: 1.2 };
+            },
+            onEachFeature: function (feature, layer) {
+                layer.bindTooltip(feature.properties.NAMA_UNSUR || "Sungai", {
+                    direction: "auto",
+                    sticky: true,
+                });
+            }
+        });
+
+        $.getJSON("data/sungai.geojson", function (data) {
+            sungai.addData(data);
+            map.addLayer(sungai);
+        });
+
+        // ======================= Jumlah Penduduk (Poligon) =======================
+        map.createPane('panejumlahpenduduk');
+        map.getPane("panejumlahpenduduk").style.zIndex = 401;
+
+        var jumlah_penduduk = L.geoJSON(null, {
+            style: function (feature) {
+                if (feature.properties.Penduduk <= 15000) {
+                    return { color: 'black', weight: 1.0, opacity: 1, fillOpacity: 0.7, fillColor: '#ffffb2' }
+                }
+                if (feature.properties.Penduduk > 15000 && feature.properties.Penduduk <= 30000) {
+                    return { color: 'black', weight: 1.0, opacity: 1, fillOpacity: 0.7, fillColor: '#fd8d3c' }
+                }
+                if (feature.properties.Penduduk > 30000) {
+                    return { color: 'black', weight: 1.0, opacity: 1, fillOpacity: 0.7, fillColor: '#bd0026' }
+                }
+            },
+            onEachFeature: function (feature, layer) {
+                var popup_content = "Kecamatan: " + feature.properties.WADMKC + "<br>" +
+                    "Jumlah Penduduk: " + feature.properties.Penduduk;
+                layer.bindPopup(popup_content);
+                layer.bindTooltip(feature.properties.WADMKC, {
+                    direction: "auto",
+                    sticky: true,
+                });
+            }
+        });
+
+        var batas_kecamatan = L.geoJSON(null);
+        $.getJSON("data/batas_kecamatan.geojson", function (data) {
+            jumlah_penduduk.addData(data);
+            map.addLayer(jumlah_penduduk);
+        });
+
+        // ======================= Control Layer =======================
+        var baseMaps = {
+            "OpenStreetMap": osm,
+            "Esri World Imagery": Esri_WorldImagery,
+            "Rupa Bumi Indonesia": rupabumiindonesia,
+        };
+
+        var overlayMaps = {
+            "Toponimi": toponimii,
+            "Jalan": jalan,
+            "Sungai": sungai,
+            "Jumlah Penduduk": jumlah_penduduk,
+        };
+
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+    </script>
+</body>
+
+</html>
