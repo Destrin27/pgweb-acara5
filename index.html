@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Web Flores</title>
+    <title>Leaflet JS</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <style>
@@ -97,7 +97,11 @@
         });
 
         // ======================= Sungai =======================
+        map.createPane('panesungai');
+        map.getPane("panesungai").style.zIndex = 402; // lebih tinggi dari poligon
+
         var sungai = L.geoJSON(null, {
+            pane: 'panesungai',
             style: function () {
                 return { color: "blue", opacity: 1, weight: 1.2 };
             },
@@ -116,7 +120,7 @@
 
         // ======================= Jumlah Penduduk (Poligon) =======================
         map.createPane('panejumlahpenduduk');
-        map.getPane("panejumlahpenduduk").style.zIndex = 401;
+        map.getPane("panejumlahpenduduk").style.zIndex = 400;
 
         var jumlah_penduduk = L.geoJSON(null, {
             style: function (feature) {
@@ -141,7 +145,6 @@
             }
         });
 
-        var batas_kecamatan = L.geoJSON(null);
         $.getJSON("data/batas_kecamatan.geojson", function (data) {
             jumlah_penduduk.addData(data);
             map.addLayer(jumlah_penduduk);
